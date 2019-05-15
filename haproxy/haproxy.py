@@ -55,11 +55,16 @@ def run_checks(servers):
         allperf=""          # The complete set of all performance data for a server
         alert_warn=False    # Flag set if  check makes a server WARN
         alert_crit=False    #   "   "   "   "   "   "   "   "   CRIT
-
-        for check,warn,crit in checks:
+        used_fields=[]
+ 
+        for srvregex, check,warn,crit,revcheck in checks:
             output=""
             perfdata=""
-
+            if not re.search(srvregex, server['fullname']):
+                continue
+            if check in used_fields:
+                continue
+            used_fields.append(check)
             # If the value we're looking for isn't present, skip it. (e.g. FRONTEND doesn't have chkfail)
             if not server[check]:
                 continue
@@ -78,12 +83,20 @@ def run_checks(servers):
             # Generic check for the other fields which are numeric
             # Make sure int() is used when needed!
             else:
-                if int(server[check]) >= int(warn) and int(server[check]) < int(crit):
-                    output += check + " WARN " + server[check] + ", "
-                    alert_warn = True
-                if int(server[check]) >= int(crit):
-                    output += check + " CRIT " + server[check] + ", "
-                    alert_crit = True
+                if revcheck:
+                   if int(server[check]) <= int(warn) and int(server[check]) > int(crit):
+                       output += check + " WARN " + server[check] + ", "
+                       alert_warn = True
+                   if int(server[check]) <= int(crit):
+                       output += check + " CRIT " + server[check] + ", "
+                       alert_crit = True
+                else:
+                   if int(server[check]) >= int(warn) and int(server[check]) < int(crit):
+                       output += check + " WARN " + server[check] + ", "
+                       alert_warn = True
+                   if int(server[check]) >= int(crit):
+                       output += check + " CRIT " + server[check] + ", "
+                       alert_crit = True
                 #if server[check] < warn:          # Disabled so OK doesn't give out stats 
                     #output += "| " + check + " OK " + server[check]
 
